@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "removeComments": false,
+    "noImplicitAny": true,
+    "module": "commonjs",
+    "rootDir": ".",
+    "lib": [
+      "dom",
+      "es2016"
+    ]
+  },
+  "include": [
+    "*.ts",
+    "../types/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "compileOnSave": true
+}

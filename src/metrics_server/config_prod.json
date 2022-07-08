@@ -1,0 +1,5 @@
+{
+  "datasetName": "uproxy_metrics",
+  "connectionMetricsTableName": "connections_v1",
+  "featureMetricsTableName": "feature_metrics"
+}

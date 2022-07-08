@@ -1,0 +1,411 @@
+openapi: 3.0.1
+info:
+  title: Outline Server Management
+  description: API to manage an Outline server. See [getoutline.org](https://getoutline.org).
+  version: '1.0'
+tags:
+  - name: Server
+    description: Server-level functions
+  - name: Access Key
+    description: Access key functions
+servers:
+  - url: https://myserver/SecretPath
+    description: Example URL. Change to your own server.
+paths:
+  /server:
+    get:
+      tags:
+        - Server
+      description: Returns information about the server
+      responses:
+        '200':
+          description: Server information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Server"
+              examples:
+                'No data limit':
+                  value: >-
+                    {"name":"My Server","serverId":"40f1b4a3-5c82-45f4-80a6-a25cf36734d3","metricsEnabled":true,"createdTimestampMs":1536613192052,"version":"1.0.0","portForNewAccessKeys":1234,"hostnameForAccessKeys":"example.com"}
+                'Per-key data limit':
+                  value: >-
+                    {"name":"My Server","serverId":"7fda0079-5317-4e5a-bb41-5a431dddae21","metricsEnabled":true,"createdTimestampMs":1536613192052,"version":"1.0.0","accessKeyDataLimit":{"bytes":8589934592},"portForNewAccessKeys":1234,"hostnameForAccessKeys":"example.com"}
+  /server/hostname-for-access-keys:
+    put:
+      tags:
+        - Server
+      description: Changes the hostname for access keys.  Must be a valid hostname or IP address.  If it's a hostname, DNS must be set up independently of this API.
+      requestBody:
+        required: true 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostname:
+                  type: string
+            examples:
+              'hostname':
+                value: '{"hostname": www.example.org}'
+              'IP address':
+                value: '{"hostname": "127.0.0.1"}'
+      responses:
+        '204': 
+          description: The hostname was successfully changed.
+        '400':
+          description: An invalid hostname or IP address was provided.
+        '500':
+          description: An internal error occurred.  This could be thrown if there were network errors while validating the hostname
+
+  /server/port-for-new-access-keys:
+    put:
+      description: Changes the default port for newly created access keys.  This can be a port already used for access keys.
+      tags:
+        - Access Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                port:
+                  type: number
+            examples:
+              '0':
+                value: '{"port": 12345}'
+      responses:
+        '204':
+          description: The default port was successfully changed.
+        '400':
+          description: The requested port wasn't an integer from 1 through 65535, or the request had no port parameter.
+        '409':
+          description: The requested port was already in use by another service.
+          
+  /server/access-key-data-limit:
+    put:
+      description: Sets a data transfer limit for all access keys
+      tags:
+        - Access Key
+        - Limit
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataLimit"
+              examples:
+                '0':
+                  value: '{"limit": {"bytes": 10000}}'
+      responses:
+        '204':
+          description: Access key data limit set successfully
+        '400':
+          description: Invalid data limit
+    delete:
+      description: Removes the access key data limit, lifting data transfer restrictions on all access keys.
+      tags:
+        - Access Key
+        - Limit
+      responses:
+        '204':
+          description: Access key limit deleted successfully.
+
+  /name:
+    put:
+      description: Renames the server
+      tags:
+        - Server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+            examples:
+              '0':
+                value: '{"name":"My Server"}'
+      responses:
+        '204':
+          description: Server renamed successfully
+        '400':
+          description: Invalid name
+  /access-keys:
+    post:
+      description: Creates a new access key
+      tags:
+        - Access Key
+      responses:
+        '201':
+          description: The newly created access key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessKey"
+              examples:
+                '0':
+                  value: >-
+                    {"id":"0","name":"First","password":"XxXxXx","port":9795,"method":"chacha20-ietf-poly1305","accessUrl":"ss://SADFJSKADFJAKSD@0.0.0.0:9795/?outline=1"}
+                '1':
+                  value: >-
+                    {"id":"1","name":"Second","password":"xXxXxX","port":9795,"method":"chacha20-ietf-poly1305","accessUrl":"ss://ASDFHAKSDFSDAKFJ@0.0.0.0:9795/?outline=1"}
+    get:
+      description: Lists the access keys
+      tags:
+        - Access Key
+      responses:
+        '200':
+          description: List of access keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessKeys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AccessKey"
+              examples:
+                '0':
+                  value: >-
+                    {"accessKeys":[
+                      {"id":"0","name":"Admin","password":"XxXxXx","port":18162,"method":"chacha20-ietf-poly1305","accessUrl":"ss://SADFJSKADFJAKSD@0.0.0.0:18162/?outline=1"},
+                      {"id":"1","name":"First","password":"xXxXxX","port":4410,"method":"chacha20-ietf-poly1305","accessUrl":"ss://ASDFSADJFKAS=@0.0.0.0:4410/?outline=1"},
+                      {"id":"2","name":"SecondWithCustomDataLimit","password":"XxXxXx","port":25424,"method":"chacha20-ietf-poly1305","dataLimit":{"bytes":8589934592},"accessUrl":"ss://ASDFHAKSDFSDAKFJ@0.0.0.0:25424/?outline=1"}]}
+  /access-keys/{id}:
+    delete:
+      description: Deletes an access key
+      tags:
+        - Access Key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the access key to delete
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Access key deleted successfully
+        '404':
+          description: Access key inexistent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                '0':
+                  value: >-
+                    {"code":"NotFoundError","message":"No access key found with
+                    id 9"}
+  /access-keys/{id}/name:
+    put:
+      description: Renames an access key
+      tags:
+        - Access Key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the access key to rename
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+            examples:
+              '0':
+                value: '{name: "New Key Name"}'
+      responses:
+        '204':
+          description: Access key renamed successfully
+        '404':
+          description: Access key inexistent
+  /access-keys/{id}/data-limit:
+    put:
+      description: Sets a data limit for the given access key
+      tags:
+        - Access Key
+        - Limit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the access key
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataLimit"
+            examples:
+              '0':
+                value: '{"limit": {"bytes": 10000}}'
+      responses:
+        '204':
+          description: Access key limit set successfully
+        '400':
+          description: Invalid data limit
+        '404':
+          description: Access key inexistent
+    delete:
+      description: Removes the data limit on the given access key.
+      tags:
+        - Access Key
+        - Limit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The id of the access key
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Access key limit deleted successfully.
+        '404':
+          description: Access key inexistent
+  /metrics/transfer:
+    get:
+      description: Returns the data transferred per access key
+      tags:
+        - Access Key
+      responses:
+        '200':
+          description: The data transferred by each access key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bytesTransferredByUserId:
+                    type: object
+                    additionalProperties:
+                      type: integer
+              examples:
+                '0':
+                  value: '{"bytesTransferredByUserId":{"1":1008040941,"2":5958113497,"3":752221577}}'
+  /metrics/enabled:
+    get:
+      description: Returns whether metrics is being shared
+      tags:
+        - Server
+      responses:
+        '200':
+          description: The metrics enabled setting
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metricsEnabled:
+                    type: boolean
+              examples:
+                '0':
+                  value: '{"metricsEnabled":true}'
+    put:
+      description: Enables or disables sharing of metrics
+      tags:
+        - Server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metricsEnabled:
+                  type: boolean
+            examples:
+              '0':
+                value: '{"metricsEnabled": true}'
+      responses:
+        '204':
+          description: Setting successful
+        '400':
+          description: Invalid request
+  /experimental/access-key-data-limit:
+    put:
+      deprecated: true
+      description: (Deprecated) Sets a data transfer limit for all access keys
+      tags:
+        - Access Key
+        - Limit
+      requestBody:
+        required: true
+        content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataLimit"
+              examples:
+                '0':
+                  value: '{"limit": {"bytes": 10000}}'
+      responses:
+        '204':
+          description: Access key data limit set successfully
+        '400':
+          description: Invalid data limit
+    delete:
+      deprecated: true
+      description: (Deprecated) Removes the access key data limit, lifting data transfer restrictions on all access keys.
+      tags:
+        - Access Key
+        - Limit
+      responses:
+        '204':
+          description: Access key limit deleted successfully.
+ 
+components:
+  schemas:
+    Server:
+      properties:
+        name:
+          type: string
+        serverId:
+          type: string
+        metricsEnabled:
+          type: boolean
+        createdTimestampMs:
+          type: number
+        portForNewAccessKeys:
+          type: integer
+
+    DataLimit:
+      properties:
+        bytes:
+          type: integer
+          minimum: 0
+
+    AccessKey:
+      required:
+        - id
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        password:
+          type: string
+        port:
+          type: integer
+        method:
+          type: string
+        accessUrl:
+          type: string
